@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NidhiRoute AI — Document Verification</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#14213d;--muted:#64748b;--primary:#2563eb;--primary2:#1d4ed8;--success:#16a34a;--danger:#dc2626;--line:#e2e8f0;--shadow:0 16px 45px rgba(15,23,42,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#eef4ff 0,#f8fafc 420px);color:var(--text)}
+header{padding:30px 20px 26px;background:linear-gradient(135deg,#0f172a,#1e40af 70%,#2563eb);color:#fff}.header-inner{max-width:1180px;margin:auto;display:flex;justify-content:space-between;gap:20px;align-items:center}.brand h1{margin:0;font-size:32px}.brand p{margin:7px 0 0;color:#dbeafe}.badge{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);padding:10px 14px;border-radius:999px;font-size:13px}
+.container{max-width:1180px;margin:24px auto;padding:0 16px}.steps{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px}.step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 8px;text-align:center;font-size:12px;color:var(--muted)}.step.active{background:#eff6ff;color:var(--primary);border-color:#bfdbfe;font-weight:700}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:var(--shadow)}h2{margin:0 0 16px}h3{margin:0 0 8px}.sub{color:var(--muted);font-size:14px}.info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric{background:#f8fafc;border-radius:10px;padding:10px;font-size:12px}.metric strong{display:block;font-size:14px;margin-top:4px}.document-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.doc-card{border:1px solid var(--line);border-radius:14px;padding:16px}.doc-card.verified{border:2px solid #86efac;background:#f0fdf4}.doc-card.rejected{border:2px solid #fca5a5;background:#fef2f2}.doc-status{font-size:12px;font-weight:800;padding:5px 8px;border-radius:999px;background:#fef3c7;color:#92400e;display:inline-block}.doc-status.verified{background:#dcfce7;color:#166534}.doc-status.rejected{background:#fee2e2;color:#991b1b}.upload-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:14px}label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}button{border:0;border-radius:10px;padding:12px 16px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer}button:hover{background:var(--primary2)}button.secondary{background:#e2e8f0;color:#0f172a}button.success{background:var(--success)}button:disabled{opacity:.55;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.successbox{padding:14px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}.dangerbox{padding:14px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca}.notice{padding:14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe}.small{font-size:12px;color:var(--muted)}.preview{max-width:100%;max-height:180px;border-radius:10px;margin-top:10px;display:none;border:1px solid var(--line)}video{width:100%;border-radius:12px;background:#0f172a;display:none}.submit-box{position:sticky;bottom:12px;z-index:20}.verify-result{margin-top:10px;font-size:13px}.verified-text{color:#166534}.rejected-text{color:#991b1b}footer{text-align:center;padding:28px;color:#64748b;font-size:13px}@media(max-width:800px){.steps{grid-template-columns:repeat(2,1fr)}.info-grid,.document-grid{grid-template-columns:1fr}.header-inner{flex-direction:column;align-items:flex-start}}
+
+.checking-spinner{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:nrspin .7s linear infinite;vertical-align:-2px;margin-right:7px}@keyframes nrspin{to{transform:rotate(360deg)}}
+.doc-status.checking{display:inline-flex;align-items:center}
+.scan-note{margin-top:8px;font-size:12px;color:#475569}.scan-note strong{color:#0f172a}
+</style></head>
+<body>
+<header><div class="header-inner"><div class="brand"><h1>NidhiRoute AI</h1><p>Document Verification & Submission</p></div><div class="badge">Scheme-specific verification</div></div></header>
+<main class="container">
+<div class="steps"><div class="step">1 Profile</div><div class="step">2 Eligibility</div><div class="step">3 AI Matching</div><div class="step">4 Compare</div><div class="step">5 EMI</div><div class="step active">6 Documents</div><div class="step">7 Partner</div><div class="step">8 Tracking</div></div>
+<div class="actions" style="margin-bottom:18px"><button type="button" class="secondary" id="backBtn">← Back to schemes</button></div>
+<section class="card"><h2 id="schemeTitle">Selected Scheme</h2><p class="sub" id="schemeDescription"></p><div class="info-grid" id="schemeInfo"></div></section>
+<section class="card"><h2>Applicant details</h2><p class="sub">Enter the applicant's name exactly as it appears on the Aadhaar. This is used as the local application folder name.</p><label for="applicantName">Name as on Aadhaar</label><input id="applicantName" autocomplete="name" placeholder="Example: Murugan" required><p class="small">Only the name is used for the folder name. Do not enter the Aadhaar number.</p></section>
+<section class="card"><h2>AI Document Verification</h2><p class="sub">Upload or capture each required document. The demo performs instant document screening using document-type keywords and OCR where available. A failed check must be corrected before submission.</p><div id="documentDetails"></div></section>
+<section class="card submit-box"><div id="submitMessage" class="notice">Verify all required documents to enable submission.</div><div class="actions"><button type="button" class="success" id="submitBtn" disabled>Submit Verified Documents</button></div></section>
+</main><footer>Byte Club | Smart India Hackathon Prototype • NidhiRoute AI</footer>
+<div id="cameraModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.78);z-index:9999;padding:20px"><div style="max-width:650px;margin:30px auto;background:#fff;border-radius:18px;padding:18px"><h3>Capture Document</h3><video id="cameraVideo" autoplay playsinline></video><canvas id="cameraCanvas" style="display:none"></canvas><p id="cameraMsg" class="small"></p><div class="actions"><button id="captureBtn" type="button">Capture</button><button id="closeCamera" type="button" class="secondary">Close</button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+const API=localStorage.getItem('NIDHI_API')||'http://localhost:5000/api';
+const schemes={microfinance:{name:'Micro Credit Finance (MCF)',interest:5,maxLoan:140000,description:'Small-ticket credit for individual income-generating business activities.'},mahila:{name:'Mahila Samriddhi Yojana (MSY)',interest:4,maxLoan:140000,description:'Concessional micro-finance scheme for women entrepreneurs.'},laghuvyavasaya:{name:'Laghu Vyavsaya Yojana (LVY)',interest:6,maxLoan:500000,description:'Suitable for small-scale business and self-employment ventures.'},narishakti:{name:'Nari Arthik Sashaktikaran Yojana (NASY)',interest:5,maxLoan:200000,description:'Economic empowerment scheme focused on women-led micro enterprises.'},termloan:{name:'Term Loan (TL)',interest:8,maxLoan:5000000,description:'Longer-term financing for larger eligible projects.'},greenbusiness:{name:'Green Business Scheme (GBS)',interest:5,maxLoan:1500000,description:'Financing route for eligible environmentally responsible business activities.'},education:{name:'Educational Loan Scheme (ELS)',interest:7,maxLoan:2000000,description:'Education financing for eligible higher-education expenses.'},vetls:{name:'Vocational Education and Training Loan Scheme (VETLS)',interest:4,maxLoan:150000,description:'Concessional financing for vocational education and training.'}};
+const requiredDocs={business:['SC Certificate','Identity / Aadhaar Proof','Income Certificate','Project Report','Bank Account Proof'],education:['SC Certificate','Identity / Aadhaar Proof','Income Certificate','Admission / Course Proof','Bank Account Proof']};
+const educationLoanKeys=new Set(['education','vetls']);
+const savedProfile=JSON.parse(localStorage.getItem('NIDHI_PROFILE')||'{}');
+const savedIncome=Number(savedProfile.income);
+let pdfjsLib=null;
+import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs').then(m=>{pdfjsLib=m; if(pdfjsLib.GlobalWorkerOptions) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';}).catch(()=>{});
+const qs=new URLSearchParams(location.search);let schemeKey=qs.get('scheme');let purpose=qs.get('purpose')||localStorage.getItem('NIDHI_PURPOSE')||'business';let applicantFromQuery=qs.get('name')||'';let scheme=schemes[schemeKey]||schemes.microfinance;const requiresLandDocument=purpose==='education' && educationLoanKeys.has(schemeKey) && Number.isFinite(savedIncome) && savedIncome<100000;if(applicantFromQuery)document.getElementById('applicantName').value=applicantFromQuery;let applicationId=localStorage.getItem('NIDHI_APP')||null;let selectedFiles={};let stream=null;
+const $=id=>document.getElementById(id);const rupees=n=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
+$('schemeTitle').textContent='Document Verification — '+scheme.name;$('schemeDescription').textContent=scheme.description;$('schemeInfo').innerHTML=`<div class="metric">Interest<strong>${scheme.interest}% p.a.</strong></div><div class="metric">Maximum Loan<strong>${rupees(scheme.maxLoan)}</strong></div><div class="metric">Application ID<strong>${applicationId||'Will be generated on selection'}</strong></div><div class="metric">Purpose<strong>${purpose==='education'?'Education':'Business'}</strong></div>`;
+$('backBtn').onclick=()=>{location.href='index.html'};
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let docs=[...(requiredDocs[purpose]||[])];if(requiresLandDocument)docs.push('Land Property Document');$('documentDetails').innerHTML='<div class="document-grid">'+docs.map((d,i)=>`<div class="doc-card" id="doc-card-${i}"><h3>${d}</h3><span class="doc-status" id="doc-status-${i}">Not submitted</span><div class="upload-row"><input type="file" accept=".pdf,image/*" id="doc-file-${i}"><button type="button" class="secondary" onclick="openCamera(${i})">📷 Camera</button></div><img class="preview" id="doc-preview-${i}"><div class="verify-result" id="doc-result-${i}"></div></div>`).join('')+'</div><p class="small">Accepted: PDF, JPG, PNG, WebP. Documents are saved locally by the Node.js backend after successful verification.</p>'+(requiresLandDocument?'<div class="notice" style="margin-top:12px"><b>Additional requirement:</b> Because this is an education loan and annual family income is below ₹1,00,000, a Land Property Document is required.</div>':'');
+docs.forEach((d,i)=>$('doc-file-'+i).addEventListener('change',e=>processDocument(i,e.target.files[0])));
+async function api(path,options={}){try{const r=await fetch(API+path,options);const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Request failed');return data}catch(e){return {ok:false,error:e.message}}}
+async function ensureApplication(){if(applicationId)return applicationId;const saved=JSON.parse(localStorage.getItem('NIDHI_PROFILE')||'null');if(saved?.applicationId){applicationId=saved.applicationId;return applicationId}const r=await api('/applications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({category:saved?.category||'SC',income:Number(saved?.income||0),purpose,cost:Number(saved?.cost||0),location:saved?.location||'',tenure:Number(saved?.tenure||60),schemeKey,schemeName:scheme.name,matchScore:Number(saved?.matchScore||0)})});if(r.ok){applicationId=r.applicationId;localStorage.setItem('NIDHI_APP',applicationId);return applicationId}return null}
+function normalizeText(v){return String(v||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim()}
+function nameTokens(name){return normalizeText(name).split(' ').filter(Boolean)}
+function exactNameText(v){return String(v||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim()}
+function nameMatches(entered,ocr){
+ const expected=exactNameText(entered);
+ if(!expected)return false;
+ const text=exactNameText(ocr);
+ if(!text)return false;
+ // STRICT COMPLETE-NAME MATCH: no partial names, no fuzzy spelling, and no
+ // missing/extra name words. OCR line breaks are treated as normal separators.
+ const words=expected.split(' ');
+ const target=words.join(' ');
+ const ocrWords=text.split(' ').filter(Boolean);
+ for(let i=0;i+words.length<=ocrWords.length;i++){
+   if(ocrWords.slice(i,i+words.length).join(' ')===target)return true;
+ }
+ return false;
+}
+function makeCanvasFromImage(file,scale=2){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{const w=Math.min(5000,Math.round(img.naturalWidth*scale)),h=Math.min(5000,Math.round(img.naturalHeight*scale));const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;ctx.drawImage(img,0,0,w,h);URL.revokeObjectURL(url);resolve(c)};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('IMAGE_READ_FAILED'))};img.src=url})}
+function preprocessCanvas(src,mode){const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(src,0,0);if(mode==='original')return c;const d=ctx.getImageData(0,0,c.width,c.height),px=d.data;for(let i=0;i<px.length;i+=4){const g=.299*px[i]+.587*px[i+1]+.114*px[i+2];let v=g;if(mode==='contrast')v=Math.max(0,Math.min(255,(g-128)*1.75+128));else if(mode==='threshold')v=g>160?255:0;else if(mode==='soft')v=Math.max(0,Math.min(255,(g-128)*1.25+128));px[i]=px[i+1]=px[i+2]=v}ctx.putImageData(d,0,0);return c}
+async function ocrCanvas(canvas,options={}){const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));if(!blob)throw new Error('OCR_IMAGE_FAILED');const r=await Tesseract.recognize(blob,'eng',{logger:()=>{},...options});return {text:r.data.text||'',confidence:Number(r.data.confidence||0)}}
+async function ocrNumericCanvas(canvas){return ocrCanvas(canvas,{tessedit_char_whitelist:'0123456789 -',tessedit_pageseg_mode:6})}
+async function ocrImage(file){
+ const base=await makeCanvasFromImage(file,2.2);
+ try{
+   // Keep the strict full-name rule, but run several OCR representations so
+   // camera/JPG/PNG documents do not fail just because one preprocessing pass
+   // drops a character or a digit.
+   const passes=[];
+   for(const mode of ['soft','original','contrast']){
+     try{passes.push(await ocrCanvas(preprocessCanvas(base,mode),{tessedit_pageseg_mode:6}))}catch(e){}
+   }
+   let numeric=[];
+   for(const mode of ['original','contrast','threshold']){
+     try{numeric.push(await ocrNumericCanvas(preprocessCanvas(base,mode)))}catch(e){}
+   }
+   const text=passes.map(x=>x.text).filter(Boolean).join(' ');
+   const numericText=numeric.map(x=>x.text).filter(Boolean).join(' ');
+   const confidence=passes.length?Math.max(...passes.map(x=>x.confidence)):0;
+   return {text:text.toLowerCase(),numericText:numericText.toLowerCase(),confidence};
+ }catch(e){return {text:'',numericText:'',confidence:0}}
+}
+function normalizeDigits(v){return String(v||'').replace(/[^0-9]/g,'')}
+function extractAadhaarNumbers(text){
+ const raw=String(text||'').replace(/[Oo]/g,'0').replace(/[Il|]/g,'1');
+ const candidates=[];
+ // Aadhaar is commonly printed as 1234 5678 9012. OCR can insert spaces,
+ // hyphens, or line breaks between digits, so allow all whitespace/separators.
+ const grouped=raw.match(/(?:\d[\s\-]*){12}/g)||[];
+ for(const c of grouped){const d=normalizeDigits(c);if(d.length===12)candidates.push(d)}
+ const digits=raw.replace(/[^0-9]/g,'');
+ for(let i=0;i+12<=digits.length;i++)candidates.push(digits.slice(i,i+12));
+ const compact=raw.replace(/[^0-9]/g,' ');
+ for(const c of compact.match(/\b\d{12}\b/g)||[])candidates.push(c);
+ return [...new Set(candidates)];
+}
+function verhoeffValid(num){
+ const d=[[0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],[5,8,0,3,7,9,6,1,4,2],[8,7,9,0,6,4,3,2,5,1],[7,0,4,6,8,5,9,3,2,1],[4,2,8,1,5,7,6,9,0,3],[2,9,5,8,1,6,0,4,3,7],[9,4,3,5,2,0,8,6,1,7],[0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4]];
+ const p=[[0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],[5,8,0,3,7,9,6,1,4,2],[8,7,9,0,6,4,3,2,5,1],[7,0,4,6,8,5,9,3,2,1],[4,2,8,1,5,7,6,9,0,3],[2,9,5,8,1,6,0,4,3,7],[9,4,3,5,2,0,8,6,1,7]];
+ let c=0;const digits=String(num).split('').reverse().map(Number);for(let i=0;i<digits.length;i++)c=d[c][p[i%8][digits[i]]];return c===0;
+}
+function hasValidAadhaarNumber(text){return extractAadhaarNumbers(text).some(verhoeffValid)}
+async function scanQrCanvas(canvas){if(!window.jsQR)return false;const ctx=canvas.getContext('2d',{willReadFrequently:true});const d=ctx.getImageData(0,0,canvas.width,canvas.height);return !!jsQR(d.data,d.width,d.height,{inversionAttempts:'attemptBoth'})}
+async function imageQuality(file){
+ return new Promise(resolve=>{const img=new Image();img.onload=()=>{URL.revokeObjectURL(img.src);const w=img.naturalWidth,h=img.naturalHeight;
+   // A document can be portrait or landscape. Do not reject simply because one
+   // dimension is below the old fixed threshold; judge usable pixel area instead.
+   if(w*h<500000 || Math.min(w,h)<450)return resolve({ok:false,message:'Capture was unclear, please upload PDF or capture the document clearly.'});
+   resolve({ok:true});};img.onerror=()=>resolve({ok:false,message:'Capture was unclear, please upload PDF or capture the document clearly.'});img.src=URL.createObjectURL(file)})
+}
+async function readPdf(file){
+ const ab=await file.arrayBuffer();if(!pdfjsLib)pdfjsLib=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');if(pdfjsLib.GlobalWorkerOptions)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+ let pdf;try{pdf=await pdfjsLib.getDocument({data:ab}).promise}catch(e){const msg=String(e?.message||e||'').toLowerCase();if(e?.name==='PasswordException'||e?.code===1||e?.code===2||msg.includes('password')||msg.includes('encrypted'))throw new Error('PDF_ENCRYPTED');throw new Error('PDF_READ_FAILED')}
+ let text='',confidenceParts=[],qrFound=false;const maxPages=Math.min(pdf.numPages,5);
+ for(let p=1;p<=maxPages;p++){
+   const page=await pdf.getPage(p);const tc=await page.getTextContent();text+=' '+tc.items.map(x=>x.str).join(' ');
+   const viewport=page.getViewport({scale:2.2});const canvas=document.createElement('canvas');canvas.width=Math.floor(viewport.width);canvas.height=Math.floor(viewport.height);const ctx=canvas.getContext('2d',{willReadFrequently:true});await page.render({canvasContext:ctx,viewport}).promise;
+   qrFound=qrFound||await scanQrCanvas(canvas);
+   // Always OCR the rendered page, even when PDF has a text layer. This handles
+   // scanned/image PDFs and improves name matching on poorly extracted text.
+   try{const r=await ocrCanvas(preprocessCanvas(canvas,'contrast'));text+=' '+r.text;confidenceParts.push(r.confidence)}catch(e){}
+ }
+ if(!text.trim()||(!confidenceParts.length&&pdf.numPages))throw new Error('UNCLEAR');
+ return {text:text.toLowerCase(),confidence:confidenceParts.length?Math.max(...confidenceParts):100,qrFound};
+}
+async function inspectFile(file){
+ if(file.type.startsWith('image/')){const q=await imageQuality(file);if(!q.ok)throw new Error('UNCLEAR');const o=await ocrImage(file);if(o.confidence<30||!o.text.trim())throw new Error('UNCLEAR');let qrFound=false;try{const c=await makeCanvasFromImage(file,2);qrFound=await scanQrCanvas(c)}catch(e){}return {...o,text:[o.text,o.numericText].filter(Boolean).join(' '),qrFound}}
+ if(file.type==='application/pdf')return readPdf(file);throw new Error('UNSUPPORTED')
+}
+function expectedKeywords(doc){const map={'SC Certificate':['scheduled caste','caste certificate','sc certificate','community certificate'],'Identity / Aadhaar Proof':['aadhaar','aadhar','uidai','identity'],'Income Certificate':['income certificate','annual income','family income'],'Project Report':['project report','business plan','project cost','proposal'],'Bank Account Proof':['bank','account number','passbook','ifsc'],'Admission / Course Proof':['admission','college','university','course','fee','enrolment'],'Land Property Document':['land document','land title','property','ownership','patta','title deed','sale deed','survey number','chitta','adangal']};return map[doc]||[]}
+async function aiCheck(i,file){
+ const doc=docs[i],enteredName=($('applicantName').value||'').trim();
+ if(!enteredName)return {ok:false,message:'Enter the applicant name as on Aadhaar before uploading documents.'};
+ if(!file)return {ok:false,message:'Please select a document.'};
+ const allowed=['application/pdf','image/jpeg','image/png','image/webp'];if(!allowed.includes(file.type))return {ok:false,message:'Unsupported document. Upload PDF, JPG, PNG or WebP.'};
+ let scan;try{scan=await inspectFile(file)}catch(e){
+   if(e.message==='PDF_ENCRYPTED')return {ok:false,message:'The PDF was encrypted please decrypt and upload.'};
+   if(e.message==='UNCLEAR')return {ok:false,message:'Capture was unclear, please upload PDF or capture the document clearly.'};
+   return {ok:false,message:'The document could not be analysed. Please upload a clear PDF or capture the document clearly.'};
+ }
+ const text=normalizeText(scan.text);
+ // Aadhaar needs a slightly different keyword path because OCR may correctly
+ // read the name and 12-digit number while missing the printed word "Aadhaar".
+ // The actual document is still required to contain the exact applicant name
+ // and a checksum-valid 12-digit Aadhaar number.
+ if(doc==='Identity / Aadhaar Proof'){
+   if(!nameMatches(enteredName,scan.text))return {ok:false,message:'Name on the document does not exactly match the applicant name. Please upload the correct Aadhaar document.'};
+   const aadhaarSource=[scan.text,scan.numericText||''].join(' ');
+   if(!hasValidAadhaarNumber(aadhaarSource))return {ok:false,message:'A valid 12-digit Aadhaar number could not be verified in the document. Please upload a clear Aadhaar document.'};
+   const identityLabel=/\b(aadhaar|aadhar|uidai)\b/i.test(text);
+   return {ok:true,message:scan.qrFound?'AI screening passed. Complete Aadhaar name and valid 12-digit Aadhaar number matched, and a QR code was detected.':identityLabel?'AI screening passed. Complete Aadhaar name and valid 12-digit Aadhaar number were verified.':'AI screening passed. Complete Aadhaar name and valid 12-digit Aadhaar number were verified.'};
+ }
+ const keys=expectedKeywords(doc).map(normalizeText);
+ const keywordHit=keys.some(k=>text.includes(k));
+ if(!keywordHit)return {ok:false,message:'You are not eligible to this scheme, please upload the correct documents.'};
+ // COMMON RULE FOR EVERY OTHER DOCUMENT: the COMPLETE applicant name must appear
+ // exactly in the document content. Partial names and fuzzy spelling never pass.
+ if(!nameMatches(enteredName,scan.text))return {ok:false,message:'Name on the document does not exactly match the applicant name. Please upload the correct document.'};
+ 
+ // Document-specific content checks.
+ if(doc==='Land Property Document'){
+   if(!/\b(land document|land title|property|ownership|patta|title deed|sale deed|survey number|chitta|adangal)\b/i.test(text))return {ok:false,message:'Land ownership/property details were not found. Please upload the correct land document.'};
+   return {ok:true,message:'AI screening passed. Land/property document content and complete applicant name matched exactly.'};
+ }
+ if(doc==='SC Certificate'){
+   if(!/\b(scheduled caste|caste certificate|sc certificate|community certificate)\b/i.test(text))return {ok:false,message:'SC status was not found in the certificate. Please upload the correct SC certificate.'};
+   if(!/\b(sc|scheduled caste)\b/i.test(text))return {ok:false,message:'SC status was not found in the certificate. Please upload the correct SC certificate.'};
+   return {ok:true,message:'AI screening passed. SC certificate content and complete applicant name matched exactly.'};
+ }
+ if(doc==='Income Certificate'){
+   if(!/\b(income certificate|annual income|family income)\b/i.test(text))return {ok:false,message:'Income certificate details were not found. Please upload the correct income certificate.'};
+   return {ok:true,message:'AI screening passed. Income certificate content and complete applicant name matched exactly.'};
+ }
+ if(doc==='Bank Account Proof'){
+   // Require a plausible bank/account document AND an actual account number.
+   // The account number is content-validated here; no filename is ever used.
+   const bankHit=/\b(bank|passbook|ifsc|account number|a\/c)\b/i.test(text);
+   const accountDigits=(text.match(/\b\d{9,18}\b/g)||[]);
+   if(!bankHit||!accountDigits.length)return {ok:false,message:'Bank account proof or a valid account number was not found. Please upload the correct bank account proof.'};
+   return {ok:true,message:'AI screening passed. Bank account proof, account number and complete applicant name matched exactly.'};
+ }
+ if(doc==='Project Report'){
+   if(!/\b(project report|business plan|project cost|proposal)\b/i.test(text))return {ok:false,message:'Project report details were not found. Please upload the correct project report.'};
+   return {ok:true,message:'AI screening passed. Project report content and complete applicant name matched exactly.'};
+ }
+ if(doc==='Admission / Course Proof'){
+   if(!/\b(admission|college|university|course|fee|enrolment|enrollment)\b/i.test(text))return {ok:false,message:'Admission/course details were not found. Please upload the correct course proof.'};
+   return {ok:true,message:'AI screening passed. Admission/course proof and complete applicant name matched exactly.'};
+ }
+ return {ok:true,message:'AI screening passed. Document content and complete applicant name matched exactly.'};
+}
+async function processDocument(i,file){if(!file)return;const status=$('doc-status-'+i),card=$('doc-card-'+i),result=$('doc-result-'+i);status.innerHTML='<span class="checking-spinner"></span>AI checking…';status.className='doc-status checking';card.className='doc-card';result.textContent='';const check=await aiCheck(i,file);if(!check.ok){status.textContent='Rejected';status.className='doc-status rejected';card.className='doc-card rejected';result.className='verify-result rejected-text';result.textContent=check.message;delete selectedFiles[i];updateSubmit();return}status.textContent='Verified';status.className='doc-status verified';card.className='doc-card verified';result.className='verify-result verified-text';result.textContent=check.message;selectedFiles[i]=file;if(file.type.startsWith('image/')){const img=$('doc-preview-'+i);img.src=URL.createObjectURL(file);img.style.display='block'}updateSubmit()}
+function updateSubmit(){const ok=docs.every((_,i)=>selectedFiles[i]);$('submitBtn').disabled=!ok;$('submitMessage').className=ok?'successbox':'notice';$('submitMessage').textContent=ok?'All required documents passed AI screening and are ready for submission.':'Verify all required documents to enable submission.'}
+async function openCamera(i){$('cameraModal').style.display='block';$('cameraVideo').style.display='block';$('cameraMsg').textContent='';$('cameraVideo').dataset.index=i;try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});$('cameraVideo').srcObject=stream}catch(e){$('cameraMsg').textContent='Camera unavailable. Please use file upload instead.'}}
+$('captureBtn').onclick=()=>{const i=Number($('cameraVideo').dataset.index),v=$('cameraVideo'),c=$('cameraCanvas');if(!v.videoWidth){$('cameraMsg').textContent='Camera is not ready yet.';return}c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);c.toBlob(async b=>{const f=new File([b],docs[i].toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.jpg',{type:'image/jpeg'});$('doc-file-'+i).value='';await processDocument(i,f);closeCamera()},'image/jpeg',.92)};
+function closeCamera(){$('cameraModal').style.display='none';if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('cameraVideo').srcObject=null}$('closeCamera').onclick=closeCamera;
+$('submitBtn').onclick=async()=>{const applicantName=$('applicantName').value.trim();if(!applicantName){$('submitMessage').className='dangerbox';$('submitMessage').textContent='Enter the name as on Aadhaar before submission.';return}const app=await ensureApplication();if(!app){$('submitMessage').className='dangerbox';$('submitMessage').textContent='Could not connect to the local backend. Start npm start in the backend folder.';return}$('submitBtn').disabled=true;$('submitMessage').className='notice';$('submitMessage').textContent='Submitting verified documents to your local Application folder…';let uploaded=[];for(const [idx,file] of Object.entries(selectedFiles)){const fd=new FormData();fd.append('document',file);fd.append('documentType',docs[Number(idx)]);fd.append('applicationId',app);fd.append('applicantName',applicantName);fd.append('aiVerified','true');const r=await api('/documents',{method:'POST',body:fd});if(!r.ok){$('submitMessage').className='dangerbox';$('submitMessage').textContent=r.error||'A document could not be saved.';$('submitBtn').disabled=false;return}uploaded.push(r.document)}const r=await api('/applications/'+encodeURIComponent(app)+'/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({applicantName})});if(!r.ok){$('submitMessage').className='dangerbox';$('submitMessage').textContent=r.error||'Submission could not be completed.';$('submitBtn').disabled=false;return}$('submitMessage').className='successbox';$('submitMessage').innerHTML='<b>Documents submitted successfully.</b><br>Saved on this PC in <code>Application/'+esc(applicantName)+'</code>.';$('submitBtn').textContent='Documents Submitted ✓'}
+</script>
+</body></html>
