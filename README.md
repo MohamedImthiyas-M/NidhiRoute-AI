@@ -1,99 +1,213 @@
-# NidhiRoute AI — Full-Stack Upgrade
+# NidhiRoute AI
 
-## What was added
-- Modern responsive UI and 8-stage journey.
-- Explainable weighted scheme matching with match scores.
-- Scheme comparison and "why this matches" reasons.
-- EMI simulator: EMI, principal, total interest and total repayment.
-- Current-location option for routing (browser permission required).
-- Partner routing with OpenStreetMap/Leaflet and directions.
-- Document submission after scheme selection.
-- PDF/JPG/PNG upload.
-- Camera capture using browser `getUserMedia()` for document images.
-- Backend application creation and application IDs.
-- Backend document storage and verification statuses.
-- Verifier endpoints for Pending Verification → Verified/Rejected.
-- PostgreSQL schema for applications and documents.
-- In-memory fallback when PostgreSQL is not configured, useful for demos.
-- Application tracking UI.
+> **Smart scheme discovery, eligibility screening and application guidance for SC entrepreneurs and students.**
 
-## Run
-### 1. Backend
+NidhiRoute AI is an academic/hackathon prototype that helps applicants explore funding schemes, understand a configured eligibility screen, estimate loan repayments, locate demo channel partners and prepare supporting documents.
+
+## Contents
+
+- `frontend/index.html` — Home / landing page
+- `frontend/login.html` — Sign in and account creation
+- `frontend/dashboard.html` — Applicant dashboard and searchable scheme catalogue
+- `frontend/find-schemes.html` — General profile-based scheme matching, comparison, EMI and partner routing
+- `frontend/apply-scheme.html` — Dedicated application form for one selected scheme
+- `frontend/document-verification.html` — Document upload/camera capture and OCR-based screening
+- `backend/server.js` — Express API for accounts, applications and document submission
+- `database/schema.sql` — PostgreSQL tables and index definitions
+- `Application/` — Local applicant document/account storage root (created/used by the backend)
+
+## Main applicant journey
+
+1. Open `frontend/index.html` (or the root `nidhiroute-ai-original.html` entry file).
+2. Choose **Apply for Schemes** and sign in or create an account.
+3. Use the dashboard to search/filter the scheme catalogue.
+4. Select a scheme:
+   - **Apply for Schemes** on a scheme card opens a dedicated application page for that scheme.
+   - The scheme purpose is preselected; applicants do not select another scheme on that page.
+5. Enter applicant name, annual family income, project/course cost, location and preferred timeline.
+6. Run the configured eligibility screening.
+7. Review the selected scheme and available demo channel partners. Use map markers and individual Google Maps direction links.
+8. Continue to document verification, upload each required file or capture it using the camera, and submit after the checks pass.
+
+The general matching page is also available for applicants who want to compare recommendations before selecting a scheme.
+
+## Configured eligibility rules in this prototype
+
+These are **prototype rules configured for this project**, not a statement of official government eligibility policy:
+
+- Annual Family Income (AFI) must be **below ₹5,00,000 for every scheme**.
+  - ₹4,99,999 passes the income threshold.
+  - ₹5,00,000 and above fail the configured income threshold.
+- Loan requests are capped at **₹5,00,000**, subject to a lower maximum configured for the selected scheme.
+- For an **education loan** only, if AFI is **below ₹1,00,000**, the applicant must additionally submit a **Land Property Document**.
+- At AFI of ₹1,00,000 or above, that additional land document is not triggered by this rule.
+- Other required documents remain based on the selected purpose (education/business).
+
+Always check the latest official scheme notification and lending institution requirements before using these rules outside a demonstration.
+
+## Document checklist
+
+**Education applications**
+- SC Certificate
+- Identity / Aadhaar Proof
+- Income Certificate
+- Admission / Course Proof
+- Bank Account Proof
+- Land Property Document — additionally required only for education-loan applications with AFI below ₹1,00,000
+
+**Business applications**
+- SC Certificate
+- Identity / Aadhaar Proof
+- Income Certificate
+- Project Report
+- Bank Account Proof
+
+Accepted upload formats configured in the backend: PDF, JPG, PNG and WebP. The document page also provides camera capture where the browser supports camera access.
+
+## Technology stack
+
+| Layer | Technologies |
+|---|---|
+| Frontend | HTML5, CSS3, JavaScript |
+| Maps | Leaflet.js, OpenStreetMap |
+| Directions | Google Maps directions URLs |
+| OCR / document parsing | Tesseract.js, PDF.js, jsQR |
+| Backend | Node.js, Express.js, Multer |
+| Database | PostgreSQL (`pg` driver); in-memory fallback for demo |
+| Authentication | Local account records, salted scrypt password hashes, signed demo session token |
+| Storage | Local `Application/<Applicant Name>/` directory when backend runs locally |
+
+## Run locally
+
+### Requirements
+
+- Node.js (LTS recommended) and npm
+- PostgreSQL only if you want persistent relational database storage
+- A modern browser
+
+### 1. Start the backend
+
+Open a terminal in the project folder:
+
 ```bash
 cd backend
 npm install
 npm start
 ```
-API: http://localhost:5000
 
-### 2. PostgreSQL (recommended)
-Create database `nidhiroute`, then run:
+The API starts at:
+
+```text
+http://localhost:5000
+```
+
+Health check:
+
+```text
+http://localhost:5000/api/health
+```
+
+### 2. Optional PostgreSQL setup
+
+Create a database named `nidhiroute`, then run the schema:
+
 ```bash
 psql -U postgres -d nidhiroute -f database/schema.sql
 ```
-Set `DATABASE_URL` in `backend/.env` or environment variables.
 
-### 3. Frontend
-Open `frontend/index.html` in a browser. For camera access, browsers normally require a secure context (`https://`) or localhost.
+Copy `backend/.env.example` to `backend/.env` and set `DATABASE_URL`. Example:
 
-If the backend is deployed somewhere else, set:
-```js
-localStorage.setItem('NIDHI_API','https://your-domain.example/api')
-```
-before loading the page.
-
-## Document verification flow
-Applicant:
-1. Analyze profile.
-2. Select scheme.
-3. Required documents appear.
-4. Choose PDF/image upload OR Camera.
-5. File is sent to `POST /api/documents`.
-6. Status becomes `Pending Verification`.
-
-Verifier:
-1. Review pending documents from `GET /api/admin/pending-documents`.
-2. Verify or reject using:
-`PATCH /api/documents/:id/status`
-with JSON such as:
-```json
-{"status":"Verified","remarks":"Document readable and details match application."}
+```env
+PORT=5000
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/nidhiroute
+SESSION_SECRET=replace-with-a-long-random-secret
 ```
 
-## Production security requirements
-This prototype intentionally keeps the verifier API simple for hackathon demonstration. Before production:
-- Add applicant/verifier authentication and role-based authorization.
-- Store files in private object storage instead of a public uploads folder.
-- Encrypt sensitive data at rest and in transit.
-- Add malware scanning and file-type/content validation.
-- Add audit logs for every verification action.
-- Add retention/deletion policy and consent/privacy notices.
-- Never claim automated document verification unless an actual OCR/identity/document verification service is integrated.
-- Replace demo scheme/partner data with verified official data sources.
+Keep `.env` private. Do not commit credentials or secrets to GitHub.
 
-## Backend architecture
-Browser → Express REST API → PostgreSQL
-                         ↘ private document storage
-Application creation → application record
-Document upload → document record + file
-Verifier review → status/remarks/verified timestamp
+If `DATABASE_URL` is not configured, the backend uses in-memory application/document records for demonstration; these records are not durable across server restarts. Account files and uploaded documents are handled separately by the local backend.
 
-## Local document submission storage
-When the backend is running locally, successfully AI-screened documents submitted from `frontend/document-verification.html` are stored on the same PC in:
+### 3. Open the frontend
 
-`NidhiRoute_AI_FullStack/Application/<Applicant Name>/`
+For a basic UI preview, open:
 
-Example:
+```text
+frontend/index.html
+```
 
-`NidhiRoute_AI_FullStack/Application/Murugan/`
+For the complete local workflow, keep the backend running and serve the frontend from `http://localhost` or another local web server. Camera access generally requires HTTPS or localhost. Some browser security features and module/CDN imports may not work reliably from a `file://` URL.
 
-The folder name is sanitized for Windows filesystem compatibility. The browser cannot arbitrarily write folders to the PC; the local Node.js backend performs this save operation.
+If your backend is hosted elsewhere, set the API base before loading the frontend:
 
+```javascript
+localStorage.setItem("NIDHI_API", "https://YOUR_API_HOST/api");
+```
 
-## Portal / Login / Dashboard
-- `frontend/index.html` is the new portal-style landing page with the 3-line menu.
-- `frontend/login.html` provides sign-up and login. Passwords are stored as a salted scrypt hash, not plaintext.
-- `frontend/dashboard.html` provides authenticated dashboard, working scheme search/filter, and Apply for Schemes.
-- `frontend/find-schemes.html` is the original NidhiRoute scheme-matching workflow, preserved as the next step after login.
-- Local account storage is created by the Node backend under `Application/<Applicant Name>/login info/account.json`.
-- For production, use HTTPS, a proper database/session store, secure secret management, authentication controls and private object storage.
+## API overview
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/health` | Backend health and database status |
+| POST | `/api/auth/signup` | Create an applicant account |
+| POST | `/api/auth/login` | Sign in |
+| GET | `/api/auth/me` | Read current session user |
+| POST | `/api/applications` | Create an application record |
+| GET | `/api/applications/:id` | Retrieve application |
+| POST | `/api/documents` | Upload a screened document |
+| GET | `/api/applications/:id/documents` | List application documents |
+| POST | `/api/applications/:id/submit` | Submit the document set |
+| GET | `/api/admin/pending-documents` | List pending documents |
+| PATCH | `/api/documents/:id/status` | Update a document status |
+
+The verifier endpoints are demonstration endpoints. They are not protected by a production-grade role/permission system in this prototype.
+
+## Local file storage
+
+When the backend is running locally, applicant accounts and submitted documents are stored under the project’s `Application/` directory, organized by a sanitized applicant name. The browser alone cannot create arbitrary folders on a user’s computer; the local Node.js backend performs the file operations.
+
+Do not store real Aadhaar, bank, income or property documents in a public repository. The `Application/` folder should remain empty in GitHub except for its `.gitkeep` placeholder.
+
+## Important limitations and responsible use
+
+- NidhiRoute AI is an **academic/hackathon prototype**, not an official government portal, lender, bank or scheme administrator.
+- Scheme names, amounts, rates, partner locations, partner load/status and some eligibility data are prototype/demo data and must be independently verified against current official notifications.
+- The ₹5,00,000 AFI threshold, ₹5,00,000 loan cap and conditional Land Property Document rule are project-configured demonstration rules, not universal government rules.
+- OCR and checksum checks are screening aids only. They do not prove that a document is genuine, belongs to the applicant, or is accepted by UIDAI, a bank or a government authority.
+- Aadhaar checksum validation is not UIDAI authentication or e-KYC. Do not represent it as such.
+- Do not upload real sensitive documents to an untrusted or public deployment.
+- Before production: add HTTPS, secure secrets, robust authentication, role-based authorization, private encrypted object storage, malware scanning, audit trails, rate limiting, consent/privacy notices, retention/deletion controls, server-side validation and official data integrations.
+
+## Suggested GitHub upload
+
+1. Create a new GitHub repository.
+2. Add the project folders and files, including this `README.md`.
+3. Keep `Application/` empty except for `.gitkeep`.
+4. Do **not** upload `.env`, real applicant data, uploaded documents, passwords, API keys or database dumps.
+5. Add a `.gitignore` similar to:
+
+```gitignore
+node_modules/
+backend/.env
+backend/uploads/*
+!backend/uploads/.gitkeep
+Application/*
+!Application/.gitkeep
+*.log
+.DS_Store
+Thumbs.db
+```
+
+6. In GitHub, use **Add file → Upload files**, or push with Git:
+
+```bash
+git init
+git add .
+git commit -m "Initial NidhiRoute AI project"
+git branch -M main
+git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
+git push -u origin main
+```
+
+## Project status
+
+**Prototype ready for local demonstration and academic evaluation.** Production deployment requires the security, privacy, data-verification and operational work listed above.
